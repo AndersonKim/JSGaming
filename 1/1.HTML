@@ -34,7 +34,7 @@ var Paddle=function (arg) {
     var o={
         image:image,
         x:100,
-        y:200,
+        y:250,
         speed:5,
     }
     o.moveLeft=function () {
@@ -47,25 +47,101 @@ var Paddle=function (arg) {
         if (o.x<arg.width-image.width) { o.x+=o.speed}
        
     }
+    o.moveUp=function () {
+        if (o.y>0) { o.y-=o.speed}
+       
+    }
+    o.moveDown=function () {
+        if (o.y<arg.height-image.height) { o.y+=o.speed}
+       
+    }
+
+    o.collide=function (ball) {
+        if (ball.y+ball.image.height>o.y) {
+            if (ball.x>o.x&&ball.x<o.x+o.image.width) {
+                return true
+            }
+        }
+        return false
+    }
+
+    return o
+}
+
+var Ball=function (arg) {
+    var image=imageFromPath('ball.png')
+    //参数封装对象
+    var o={
+        image:image,
+        x:100,
+        y:200,
+        speedX:5,
+        speedY:6,
+        fired:false,
+    }
+    o.fire=function () {
+        o.fired=true
+    }
+    o.move=function () {
+        if (o.fired) {
+            //console.log('move')
+            if(o.x<0||o.x>arg.width-o.image.width){
+                o.speedX=-o.speedX
+            }
+            if(o.y<0||o.y>arg.height-o.image.height){
+                o.speedY=-o.speedY
+            }
+            //move
+            o.x+=o.speedX
+            o.y+=o.speedY
+        }
+    }
     return o
 }
 
 //一些设置系列的对象
 var Config=function() {
 
-    var g={}
+    var g={
+       //事件对应的动作 
+        actions:{},
+        //被注册的按键
+        keydowns:{},
+    }
 
     var log=console.log.bind(console)
     var canvas=document.querySelector('#id-canvas')
     var context=canvas.getContext('2d')
     g.canvas=canvas
     g.context=context
-
-    //定时更新实现稳定30fps
+    g.drawImage=function (myImage) {
+       context.drawImage(myImage.image,myImage.x,myImage.y)
+    }
+    //events
+    window.addEventListener('keydown',function(event){
+        g.keydowns[event.key]=true
+    })
+    window.addEventListener('keyup',function(event){
+        g.keydowns[event.key]=false
+    })
+    //事件注册函数
+    g.registerAction=function (key,callback) {
+        g.actions[key]=callback
+        
+    }
+    //定时更新实现稳定30fps timer
     setInterval(function(){
+        //event
+        var actions=Object.keys(g.actions)
+        for (var i = actions.length - 1; i >= 0; i--) {
+            var key=actions[i]
+            if(g.keydowns[key]){
+                g.actions[key]()
+            }
+        }
+
         //update x
         g.update()
-   
         //clear
         context.clearRect(0,0,canvas.width,canvas.height)
      //draw
@@ -81,44 +157,35 @@ var Config=function() {
 var __main=function () {
     var config=Config()
     var paddle=Paddle(config.canvas)
-    var leftDown=false
-    var rightDown=false
+    var ball=Ball(config.canvas)
 
 
 
-    //window event
-    window.addEventListener('keydown', function(event){
-        //log(event)
-        var k=event.key
-        if (k=='a') {
-            leftDown=true
-        }
-        if (k=='d') {
-            rightDown=true
-        }
+    config.registerAction('a',function(){
+        paddle.moveLeft()
     })
-
-    window.addEventListener('keyup', function(event){
-        //log(event)
-        var k=event.key
-        if (k=='a') {
-            leftDown=false
-        }
-        if (k=='d') {
-            rightDown=false
-        }
+    config.registerAction('d',function(){
+        paddle.moveRight()
     })
-
+    config.registerAction('w',function(){
+        paddle.moveUp()
+    })
+    config.registerAction('s',function(){
+        paddle.moveDown()
+    })
+    config.registerAction('f',function(){
+        ball.fire()
+    })
     config.update=function() {
-            if (leftDown) {
-                    paddle.moveLeft()
-                    }
-                if (rightDown) {
-                    paddle.moveRight()
-                    }
-        }
+          ball.move() 
+          //判断相撞
+          if (paddle.collide(ball)) {
+            ball.speedY*=-1
+          }
+    }
     config.draw=function() {
-            config.context.drawImage(paddle.image,paddle.x,paddle.y)
+        config.drawImage(paddle)
+        config.drawImage(ball)
     }
 
    
